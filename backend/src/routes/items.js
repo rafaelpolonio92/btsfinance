@@ -14,19 +14,38 @@ async function readData() {
 router.get('/', async (req, res, next) => {
   try {
     const data = await readData();
-    const { limit, q } = req.query;
-    let results = data;
+    // Parse pagination & search params with sane defaults
+    const {
+      page = 1,
+      limit = 50,
+      q = '',
+    } = req.query;
 
-    if (q) {
-      // Simple substring search (sub‑optimal)
-      results = results.filter(item => item.name.toLowerCase().includes(q.toLowerCase()));
-    }
+    // Convert to integers and guard against NaN / negatives
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNum = Math.max(parseInt(limit, 10) || 50, 1);
 
-    if (limit) {
-      results = results.slice(0, parseInt(limit, 10));
-    }
+    // Case-insensitive substring search on the 'name' field
+    const filtered = q
+      ? data.filter(item => item.name.toLowerCase().includes(String(q).toLowerCase()))
+      : data;
 
-    res.json(results);
+    const total = filtered.length;
+    const totalPages = Math.ceil(total / limitNum);
+    // Clamp pageNum to available pages after filtering
+    const safePage = Math.min(pageNum, Math.max(totalPages, 1));
+
+    // Calculate slice indexes for pagination
+    const start = (safePage - 1) * limitNum;
+    const end = start + limitNum;
+    const paginated = filtered.slice(start, end);
+
+    res.json({
+      items: paginated,
+      total,
+      page: safePage,
+      totalPages,
+    });
   } catch (err) {
     next(err);
   }
