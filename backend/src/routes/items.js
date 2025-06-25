@@ -57,9 +57,7 @@ router.get('/:id', async (req, res, next) => {
     const data = await readData();
     const item = data.find(i => i.id === parseInt(req.params.id, 10));
     if (!item) {
-      const err = new Error('Item not found');
-      err.status = 404;
-      throw err;
+      return res.status(404).json({ message: 'Item not found' });
     }
     res.json(item);
   } catch (err) {
